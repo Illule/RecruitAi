@@ -3,7 +3,7 @@
  * Typed wrappers around every backend endpoint.
  */
 
-const BASE = 'http://localhost:8002';
+const BASE = 'https://recruit-j1z8dr0ts-lakshay24bcs10398-scalercoms-projects.vercel.app';
 
 /**
  * POST /api/jd/parse
