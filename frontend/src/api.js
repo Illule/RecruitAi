@@ -3,7 +3,7 @@
  * Typed wrappers around every backend endpoint.
  */
 
-const BASE = 'https://recruit-j1z8dr0ts-lakshay24bcs10398-scalercoms-projects.vercel.app';
+const BASE = 'https://recruitai-g0lo.onrender.com';
 
 /**
  * POST /api/jd/parse
