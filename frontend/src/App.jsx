@@ -4,12 +4,20 @@
  *   1. JD Input  →  2. CV Upload  →  3. Processing  →  4. Results
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import StepIndicator    from './components/StepIndicator';
 import JDStep           from './components/JDStep';
 import UploadStep       from './components/UploadStep';
 import ProcessingStep   from './components/ProcessingStep';
 import ResultsStep      from './components/ResultsStep';
+
+function getInitialTheme() {
+  try {
+    const stored = localStorage.getItem('recruitai-theme');
+    if (stored) return stored;
+  } catch (_) { void _; } // eslint-disable-line
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
 
 export default function App() {
   const [step, setStep]         = useState(1);   // 1 | 2 | 3 | 4
@@ -17,6 +25,17 @@ export default function App() {
   const [rawJdText, setRawJdText] = useState('');
   const [jobId, setJobId]         = useState(null);
   const [results, setResults]     = useState(null);
+  const [theme, setTheme]         = useState(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    // eslint-disable-next-line
+    try { localStorage.setItem('recruitai-theme', theme); } catch (_) { void _; }
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+  }
 
   // Step 1 → 2
   function handleJDParsed(jd, rawText) {
@@ -55,7 +74,17 @@ export default function App() {
             <div className="logo-icon" aria-hidden="true">⚡</div>
             <span className="logo-name">Recruit<span>AI</span></span>
           </a>
-          <div className="header-badge">Powered by Groq · Llama 3.3</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="header-badge">Powered by Groq · Llama 3.3</div>
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
       </header>
 

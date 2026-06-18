@@ -14,10 +14,20 @@ const STATUS_ICON = {
   pending:    '⏳',
 };
 
+const STATUS_MSG = {
+  processing: 'Analysing candidates…',
+  pending:    'Starting pipeline…',
+  completed:  'Finalising results…',
+};
+
 export default function ProcessingStep({ jobId, onComplete }) {
   const [status, setStatus]       = useState(null);
   const [error, setError]         = useState('');
   const [elapsed, setElapsed]     = useState(0);
+
+  const totalCVs = status?.total_cvs ?? 0;
+  const doneCVs  = (status?.cv_statuses ?? []).filter(cv => cv.status === 'done' || cv.status === 'error').length;
+  const progress = status?.progress ?? 0;
 
   // Elapsed timer
   useEffect(() => {
@@ -38,7 +48,6 @@ export default function ProcessingStep({ jobId, onComplete }) {
           if (!cancelled) setStatus(s);
 
           if (s.status === 'completed') {
-            // Fetch results then advance
             const results = await getJobResults(jobId);
             if (!cancelled) onComplete(results);
             return;
@@ -53,7 +62,6 @@ export default function ProcessingStep({ jobId, onComplete }) {
           return;
         }
 
-        // Wait 2.5s before next poll
         await new Promise(r => setTimeout(r, 2500));
       }
     }
@@ -62,9 +70,16 @@ export default function ProcessingStep({ jobId, onComplete }) {
     return () => { cancelled = true; };
   }, [jobId, onComplete]);
 
-  const progress    = status?.progress ?? 0;
-  const cvStatuses  = status?.cv_statuses ?? [];
   const statusLabel = status?.status ?? 'starting';
+
+  // Estimate remaining time: ~3s per remaining CV
+  const remaining = Math.max(0, totalCVs - doneCVs);
+  const estSeconds = remaining * 3;
+  const estMin = Math.floor(estSeconds / 60);
+  const estSec = estSeconds % 60;
+  const estText = totalCVs > 0 && progress > 0 && progress < 100
+    ? estMin > 0 ? `~${estMin}m ${estSec}s left` : `~${estSec}s left`
+    : '';
 
   return (
     <div>
@@ -78,25 +93,49 @@ export default function ProcessingStep({ jobId, onComplete }) {
       <div className="processing-center">
         <div className="spinner-ring" id="processing-spinner" />
 
-        <div style={{ fontSize: '1.05rem', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: 4 }}>
-          {statusLabel === 'processing' ? 'Analysing candidates…' :
-           statusLabel === 'pending'    ? 'Starting pipeline…'   :
-           statusLabel === 'completed'  ? 'Finalising results…'  :
-           'Preparing…'}
+        <div style={{
+          fontSize: '1.1rem',
+          fontFamily: 'var(--font-display)',
+          fontWeight: 700,
+          marginBottom: 4,
+          background: 'var(--grad-brand)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>
+          {STATUS_MSG[statusLabel] || 'Preparing…'}
         </div>
 
-        <div className="progress-label">
-          {progress}% complete · {elapsed}s elapsed
+        <div className="progress-label" style={{ display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
+          <span>{progress}% complete</span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span>{elapsed}s elapsed</span>
+          {estText && (
+            <>
+              <span style={{ opacity: 0.4 }}>·</span>
+              <span style={{ color: 'var(--accent-3)' }}>{estText}</span>
+            </>
+          )}
         </div>
 
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${progress}%` }} id="progress-bar" />
         </div>
 
-        {cvStatuses.length > 0 && (
+        {totalCVs > 0 && (
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 8 }}>
+            {doneCVs} of {totalCVs} CVs processed
+          </div>
+        )}
+
+        {status?.cv_statuses?.length > 0 && (
           <div className="cv-status-list" id="cv-status-list">
-            {cvStatuses.map((cv, i) => (
-              <div className="cv-status-item" key={`${cv.filename}-${i}`}>
+            {status.cv_statuses.map((cv, i) => (
+              <div
+                className="cv-status-item"
+                key={`${cv.filename}-${i}`}
+                style={{ animationDelay: `${i * 0.05}s` }}
+              >
                 <span className="cv-status-icon">{STATUS_ICON[cv.status] ?? '⏳'}</span>
                 <span className="cv-status-name" title={cv.filename}>{cv.filename}</span>
                 <span className={`status-badge ${cv.status}`}>{cv.status}</span>
